@@ -44,7 +44,7 @@
       font-size:14px;
       white-space:nowrap;
       cursor:pointer;
-      margin-left:auto; /* pousse à droite */
+      margin-left:auto;
     }
     .menuToggle:hover{ background:#f3f4f6; }
 
@@ -53,8 +53,8 @@
       display:none;         /* caché par défaut */
       width:100%;
       gap:10px;
-      flex-wrap:wrap;       /* ✅ plusieurs lignes */
-      overflow-x:hidden;    /* ✅ pas de scroll horizontal */
+      flex-wrap:wrap;
+      overflow-x:hidden;
       margin-top:10px;
       align-items:flex-start;
     }
@@ -99,7 +99,6 @@
       box-shadow:0 1px 10px rgba(0,0,0,.05);
     }
 
-    /* ✅ IMPORTANT: offset d’ancrage (header sticky) */
     .anchor{
       scroll-margin-top: var(--header-offset);
     }
@@ -249,7 +248,7 @@
       );
     }
 
-    // ✅ Menu repliable (toujours)
+    // ✅ Menu repliable
     function setMenuOpen(open){
       elHeader.classList.toggle("menu-open", open);
       elToggle.setAttribute("aria-expanded", open ? "true" : "false");
@@ -360,7 +359,56 @@
       }
     };
 
-    Chart.register(daySeparatorsPlugin, dailyMaxLabelsPlugin);
+    // ✅ Marqueur "now" : point vert + label "now" (sans barre)
+    const nowMarkerPlugin = {
+      id: "nowMarker",
+      afterDatasetsDraw(chart) {
+        const idx = chart?.options?.plugins?.nowMarker?.index;
+        if (!Number.isFinite(idx)) return;
+
+        const meta0 = chart.getDatasetMeta(0);
+        const pt = meta0?.data?.[idx];
+        if (!pt) return;
+
+        const props = pt.getProps(["x", "y"], true);
+        const x = props.x;
+        const y = props.y;
+
+        const ctx = chart.ctx;
+        ctx.save();
+
+        // point vert
+        ctx.fillStyle = "green";
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // contour blanc
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // label "now"
+        ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+
+        // halo blanc pour lisibilité
+        const label = "now";
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "white";
+        ctx.strokeText(label, x + 10, y);
+
+        ctx.fillStyle = "green";
+        ctx.fillText(label, x + 10, y);
+
+        ctx.restore();
+      }
+    };
+
+    Chart.register(daySeparatorsPlugin, dailyMaxLabelsPlugin, nowMarkerPlugin);
 
     function computeDailyMaxPoints(days, temps) {
       const bestByDay = new Map();
@@ -382,6 +430,27 @@
       return ordered;
     }
 
+    function findNearestIndex(times, targetIso) {
+      const exact = times.indexOf(targetIso);
+      if (exact !== -1) return exact;
+
+      const targetMs = Date.parse(targetIso);
+      if (!Number.isFinite(targetMs)) return null;
+
+      let bestIdx = null;
+      let bestDiff = Infinity;
+      for (let i = 0; i < times.length; i++) {
+        const ms = Date.parse(times[i]);
+        if (!Number.isFinite(ms)) continue;
+        const diff = Math.abs(ms - targetMs);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIdx = i;
+        }
+      }
+      return bestIdx;
+    }
+
     async function fetchCitySeries({ name, url }) {
       const res = await fetch(url, { headers: { "Accept": "application/json" } });
       if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
@@ -401,7 +470,11 @@
       const labels = times.map(toLabel);
       const dailyMaxPoints = computeDailyMaxPoints(days, temps);
 
-      return { name, labels, days, temps, unit, timezone: tz, dailyMaxPoints };
+      // ✅ "now": basé sur json.current.time si dispo
+      const currentTime = json?.current?.time || null;
+      const nowIndex = currentTime ? findNearestIndex(times, currentTime) : null;
+
+      return { name, labels, days, temps, unit, timezone: tz, dailyMaxPoints, nowIndex };
     }
 
     function buildMenuAndSections() {
@@ -425,7 +498,7 @@
           e.preventDefault();
           scrollToSection(id);
           history.replaceState(null, "", `#${id}`);
-          setMenuOpen(false); // referme après sélection
+          setMenuOpen(false);
         });
         elMenu.appendChild(link);
 
@@ -466,7 +539,8 @@
           plugins: {
             legend: { display: true, position: "top" },
             daySeparators: { days: series.days, color: "orange", dash: [6, 6], lineWidth: 2 },
-            dailyMaxLabels: { maxPoints: series.dailyMaxPoints, unit: series.unit }
+            dailyMaxLabels: { maxPoints: series.dailyMaxPoints, unit: series.unit },
+            nowMarker: { index: series.nowIndex }
           },
           scales: {
             x: { ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 18 } },
@@ -521,7 +595,7 @@
 
     // Init
     buildMenuAndSections();
-    setMenuOpen(false);     // menu fermé par défaut
+    setMenuOpen(false);
     updateHeaderOffsetVar();
     loadAllCities();
 
