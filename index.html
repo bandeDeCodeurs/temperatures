@@ -11,50 +11,87 @@
   <style>
     :root{
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      scroll-behavior:smooth;
-      --header-offset: 110px; /* fallback, sera recalculé en JS */
+      scroll-behavior: smooth;
+      --header-offset: 110px; /* fallback, recalculé en JS */
     }
     body{ margin:0; background:#fff; color:#111827; }
 
     header{
-      position:sticky; top:0; z-index:50;
-      background:rgba(255,255,255,.92);
+      position: sticky; top:0; z-index:50;
+      background: rgba(255,255,255,.92);
       backdrop-filter: blur(8px);
-      border-bottom:1px solid #e5e7eb;
+      border-bottom: 1px solid #e5e7eb;
     }
+
     .topbar{
-      max-width:1180px; margin:0 auto; padding:12px 16px;
-      display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+      max-width:1180px;
+      margin:0 auto;
+      padding:12px 16px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap: wrap;
     }
+
     .brand{ font-weight:700; margin-right:8px; }
-    nav{
-      display:flex; gap:10px; flex-wrap:wrap; overflow-x:auto;
-    }
-    nav a{
-      text-decoration:none; color:#111827;
+
+    /* ✅ Bouton menu mobile */
+    .menuToggle{
+      display:none;
       border:1px solid #d1d5db;
-      padding:8px 10px; border-radius:999px;
-      font-size:14px; white-space:nowrap;
+      background:#fff;
+      padding:8px 10px;
+      border-radius:999px;
+      font-size:14px;
+      white-space:nowrap;
+      cursor:pointer;
+      margin-left:auto;
     }
-    nav a:hover{ background:#f3f4f6; }
+    .menuToggle:hover{ background:#f3f4f6; }
+
+    /* ✅ Menu */
+    .menu{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      overflow-x:auto;
+    }
+    .menu a{
+      text-decoration:none;
+      color:#111827;
+      border:1px solid #d1d5db;
+      padding:8px 10px;
+      border-radius:999px;
+      font-size:14px;
+      white-space:nowrap;
+    }
+    .menu a:hover{ background:#f3f4f6; }
 
     .status{
-      max-width:1180px; margin:0 auto; padding:0 16px 10px;
-      font-size:13px; color:#6b7280;
+      max-width:1180px;
+      margin:0 auto;
+      padding:0 16px 10px;
+      font-size:13px;
+      color:#6b7280;
     }
     .status.error{ color:#b91c1c; }
     .status.ok{ color:#065f46; }
 
-    main{ max-width:1180px; margin:0 auto; padding:18px 16px 48px; }
+    main{
+      max-width:1180px;
+      margin:0 auto;
+      padding:18px 16px 48px;
+    }
 
     .city{
       margin-top:26px;
-      border:1px solid #e5e7eb; border-radius:16px;
+      border:1px solid #e5e7eb;
+      border-radius:16px;
       padding:16px;
       box-shadow:0 1px 10px rgba(0,0,0,.05);
     }
 
-    /* ✅ IMPORTANT: on augmente l’offset d’ancrage pour que le titre + haut du graphe soient visibles */
+    /* ✅ IMPORTANT: offset d’ancrage (header sticky) */
     .anchor{
       scroll-margin-top: var(--header-offset);
     }
@@ -67,6 +104,40 @@
     canvas{ width:100%; max-height:520px; }
 
     .flag{ margin-right:6px; }
+
+    /* ✅ Mobile: header compact + menu repliable */
+    @media (max-width: 640px){
+      .topbar{
+        flex-wrap:nowrap; /* une seule ligne */
+        align-items:center;
+      }
+
+      .menuToggle{
+        display:inline-flex; /* montre le bouton */
+        align-items:center;
+        gap:6px;
+      }
+
+      .menu{
+        display:none;       /* menu caché */
+        width:100%;
+        margin-top:10px;
+        flex-wrap:nowrap;   /* barre horizontale */
+        overflow-x:auto;
+      }
+
+      header.menu-open .topbar{
+        flex-wrap:wrap;     /* quand ouvert, autorise retour à la ligne */
+      }
+      header.menu-open .menu{
+        display:flex;
+      }
+
+      .menu a{
+        padding:7px 9px;
+        font-size:13px;
+      }
+    }
   </style>
 </head>
 
@@ -74,7 +145,12 @@
   <header id="stickyHeader">
     <div class="topbar">
       <div class="brand">Températures</div>
-      <nav id="menu"></nav>
+
+      <button id="menuToggle" class="menuToggle" aria-expanded="false" aria-controls="menu">
+        Villes ▾
+      </button>
+
+      <nav id="menu" class="menu"></nav>
     </div>
     <div id="globalStatus" class="status"></div>
   </header>
@@ -151,6 +227,7 @@
     const elCities = document.getElementById("cities");
     const elGlobalStatus = document.getElementById("globalStatus");
     const elHeader = document.getElementById("stickyHeader");
+    const elToggle = document.getElementById("menuToggle");
 
     function setGlobalStatus(msg, type = "") {
       elGlobalStatus.textContent = msg || "";
@@ -167,7 +244,7 @@
 
     function toLabel(isoString) {
       const [d, t] = isoString.split("T");
-      return `${d.slice(5)} ${t}`;
+      return `${d.slice(5)} ${t}`; // "MM-DD HH:MM"
     }
 
     function extractCoords(city) {
@@ -197,15 +274,47 @@
       );
     }
 
-    // ✅ Recalcule l'offset réel du header (il peut prendre 2 lignes)
+    // ✅ Menu mobile (toggle)
+    function setMenuOpen(open){
+      elHeader.classList.toggle("menu-open", open);
+      elToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      elToggle.textContent = open ? "Villes ▴" : "Villes ▾";
+      updateHeaderOffsetVar(); // le header change de hauteur quand on ouvre
+    }
+
+    elToggle.addEventListener("click", () => {
+      const isOpen = elHeader.classList.contains("menu-open");
+      setMenuOpen(!isOpen);
+    });
+
+    function closeMenuOnMobile(){
+      if (window.matchMedia("(max-width: 640px)").matches) setMenuOpen(false);
+    }
+
+    // ✅ Recalcule l'offset réel du header (il peut changer selon mobile/desktop + menu ouvert)
     function updateHeaderOffsetVar() {
       const h = elHeader.getBoundingClientRect().height;
-      const extra = 14; // petite marge
+      const extra = 14;
       document.documentElement.style.setProperty("--header-offset", `${Math.ceil(h + extra)}px`);
     }
-    window.addEventListener("resize", updateHeaderOffsetVar);
+    window.addEventListener("resize", () => {
+      // Sur resize, si on passe desktop<->mobile, mieux de fermer
+      if (!window.matchMedia("(max-width: 640px)").matches) {
+        setMenuOpen(true); // desktop: menu visible (class menu-open n'a pas d'effet, mais on force bouton cohérent)
+        // On remet le bouton dans l'état "fermé" visuellement (car desktop n'en a pas besoin)
+        elHeader.classList.remove("menu-open");
+        elToggle.setAttribute("aria-expanded", "false");
+        elToggle.textContent = "Villes ▾";
+      } else {
+        // mobile: par défaut fermé
+        elHeader.classList.remove("menu-open");
+        elToggle.setAttribute("aria-expanded", "false");
+        elToggle.textContent = "Villes ▾";
+      }
+      updateHeaderOffsetVar();
+    });
 
-    // ✅ Scroll custom pour que le titre + haut du graphe soient toujours visibles
+    // ✅ Scroll custom pour compenser le header sticky
     function scrollToSection(sectionId) {
       const target = document.getElementById(sectionId);
       if (!target) return;
@@ -218,7 +327,9 @@
       window.scrollTo({ top, behavior: "smooth" });
     }
 
-    // Séparateurs de jours (orange pointillé)
+    /**
+     * ✅ Séparateurs de jours (lignes verticales orange pointillées)
+     */
     const daySeparatorsPlugin = {
       id: "daySeparators",
       afterDraw(chart, args, pluginOptions) {
@@ -253,7 +364,9 @@
       }
     };
 
-    // Labels des max quotidiens (même couleur que la courbe)
+    /**
+     * ✅ Labels des max quotidiens (couleur = série principale)
+     */
     const dailyMaxLabelsPlugin = {
       id: "dailyMaxLabels",
       afterDatasetsDraw(chart) {
@@ -279,6 +392,7 @@
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
 
+        // contour blanc pour lisibilité
         ctx.lineWidth = 4;
         ctx.strokeStyle = "white";
 
@@ -353,7 +467,7 @@
         const coordsText = formatCoords(extractCoords(c));
         const flag = countryCodeToFlagEmoji(c.countryCode);
 
-        // Menu: drapeau + nom, + scroll custom (offset header)
+        // Menu: drapeau + nom, scroll custom + fermeture mobile
         const link = document.createElement("a");
         link.href = `#${id}`;
         link.textContent = `${flag} ${c.name}`;
@@ -361,6 +475,7 @@
           e.preventDefault();
           scrollToSection(id);
           history.replaceState(null, "", `#${id}`);
+          closeMenuOnMobile();
         });
         elMenu.appendChild(link);
 
@@ -455,15 +570,22 @@
       }
     }
 
-    // Build + load
+    // Init
     buildMenuAndSections();
+
+    // Mobile: menu fermé par défaut. Desktop: le menu est visible (le bouton est caché)
+    setMenuOpen(false);
+
     updateHeaderOffsetVar();
     loadAllCities();
 
-    // ✅ Si on arrive sur une URL déjà avec un #hash, on applique aussi le scroll offset
+    // ✅ Si on arrive sur une URL avec un hash, on scroll proprement (offset)
     window.addEventListener("load", () => {
       const hash = (location.hash || "").replace("#", "");
-      if (hash) scrollToSection(hash);
+      if (hash) {
+        scrollToSection(hash);
+        closeMenuOnMobile();
+      }
     });
   </script>
 </body>
