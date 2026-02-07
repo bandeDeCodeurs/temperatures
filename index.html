@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Météo – Températures par ville</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      scroll-behavior:smooth;
+      --header-offset: 110px; /* fallback, sera recalculé en JS */
+    }
+    body{ margin:0; background:#fff; color:#111827; }
+
+    header{
+      position:sticky; top:0; z-index:50;
+      background:rgba(255,255,255,.92);
+      backdrop-filter: blur(8px);
+      border-bottom:1px solid #e5e7eb;
+    }
+    .topbar{
+      max-width:1180px; margin:0 auto; padding:12px 16px;
+      display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    }
+    .brand{ font-weight:700; margin-right:8px; }
+    nav{
+      display:flex; gap:10px; flex-wrap:wrap; overflow-x:auto;
+    }
+    nav a{
+      text-decoration:none; color:#111827;
+      border:1px solid #d1d5db;
+      padding:8px 10px; border-radius:999px;
+      font-size:14px; white-space:nowrap;
+    }
+    nav a:hover{ background:#f3f4f6; }
+
+    .status{
+      max-width:1180px; margin:0 auto; padding:0 16px 10px;
+      font-size:13px; color:#6b7280;
+    }
+    .status.error{ color:#b91c1c; }
+    .status.ok{ color:#065f46; }
+
+    main{ max-width:1180px; margin:0 auto; padding:18px 16px 48px; }
+
+    .city{
+      margin-top:26px;
+      border:1px solid #e5e7eb; border-radius:16px;
+      padding:16px;
+      box-shadow:0 1px 10px rgba(0,0,0,.05);
+    }
+
+    /* ✅ IMPORTANT: on augmente l’offset d’ancrage pour que le titre + haut du graphe soient visibles */
+    .anchor{
+      scroll-margin-top: var(--header-offset);
+    }
+
+    .city h2{ margin:0 0 6px; font-size:20px; }
+    .coords{ color:#6b7280; font-weight:500; font-size:14px; }
+    .meta{ color:#6b7280; font-size:13px; margin-bottom:10px; }
+
+    .canvasWrap{ margin-top:12px; }
+    canvas{ width:100%; max-height:520px; }
+
+    .flag{ margin-right:6px; }
+  </style>
+</head>
+
+<body>
+  <header id="stickyHeader">
+    <div class="topbar">
+      <div class="brand">Températures</div>
+      <nav id="menu"></nav>
+    </div>
+    <div id="globalStatus" class="status"></div>
+  </header>
+
+  <main>
+    <div id="cities"></div>
+  </main>
+
+  <script>
+    const CITY_SOURCES = [
+      {
+        name: "Londres",
+        countryCode: "GB",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=51.51&longitude=0.03&hourly=temperature_2m&current=temperature_2m&timezone=Europe%2FLondon&forecast_days=3"
+      },
+      {
+        name: "NYC",
+        countryCode: "US",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=40.76&longitude=-73.86&hourly=temperature_2m&current=temperature_2m&timezone=America%2FNew_York&forecast_days=3&temperature_unit=fahrenheit"
+      },
+      {
+        name: "Buenos Aires",
+        countryCode: "AR",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=-34.79&longitude=-58.52&hourly=temperature_2m&current=temperature_2m&timezone=America%2FArgentina%2FBuenos_Aires&forecast_days=3"
+      },
+      {
+        name: "Chicago",
+        countryCode: "US",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=41.98&longitude=-87.91&hourly=temperature_2m&current=temperature_2m&timezone=America%2FChicago&forecast_days=3&temperature_unit=fahrenheit"
+      },
+      {
+        name: "Dallas",
+        countryCode: "US",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=32.85&longitude=-96.87&hourly=temperature_2m&current=temperature_2m&timezone=America%2FChicago&forecast_days=3&temperature_unit=fahrenheit"
+      },
+      {
+        name: "Seoul",
+        countryCode: "KR",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=37.49&longitude=126.49&hourly=temperature_2m&current=temperature_2m&timezone=Asia%2FSeoul&forecast_days=3"
+      },
+      {
+        name: "Toronto",
+        countryCode: "CA",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=43.71&longitude=-79.66&hourly=temperature_2m&current=temperature_2m&timezone=America%2FToronto&forecast_days=3"
+      },
+      {
+        name: "Miami",
+        countryCode: "US",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=25.85&longitude=-80.24&hourly=temperature_2m&current=temperature_2m&timezone=America%2FNew_York&forecast_days=3&temperature_unit=fahrenheit"
+      },
+      {
+        name: "Atlanta",
+        countryCode: "US",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=33.64&longitude=-84.41&hourly=temperature_2m&current=temperature_2m&timezone=America%2FNew_York&forecast_days=3&temperature_unit=fahrenheit"
+      },
+      {
+        name: "Wellington",
+        countryCode: "NZ",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=-41.32&longitude=174.8&hourly=temperature_2m&current=temperature_2m&timezone=Pacific%2FAuckland&forecast_days=3"
+      },
+      {
+        name: "Seattle",
+        countryCode: "US",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=47.44&longitude=-122.3&hourly=temperature_2m&current=temperature_2m&timezone=America%2FLos_Angeles&forecast_days=3&temperature_unit=fahrenheit"
+      },
+      {
+        name: "Ankara",
+        countryCode: "TR",
+        url: "https://api.open-meteo.com/v1/forecast?latitude=40.24&longitude=33.03&hourly=temperature_2m&current=temperature_2m&timezone=Europe%2FIstanbul&forecast_days=3"
+      }
+    ];
+
+    const elMenu = document.getElementById("menu");
+    const elCities = document.getElementById("cities");
+    const elGlobalStatus = document.getElementById("globalStatus");
+    const elHeader = document.getElementById("stickyHeader");
+
+    function setGlobalStatus(msg, type = "") {
+      elGlobalStatus.textContent = msg || "";
+      elGlobalStatus.className = "status " + (type || "");
+    }
+
+    function slugify(str) {
+      return String(str)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+    }
+
+    function toLabel(isoString) {
+      const [d, t] = isoString.split("T");
+      return `${d.slice(5)} ${t}`;
+    }
+
+    function extractCoords(city) {
+      try {
+        const u = new URL(city.url);
+        const lat = Number(u.searchParams.get("latitude"));
+        const lon = Number(u.searchParams.get("longitude"));
+        if (Number.isFinite(lat) && Number.isFinite(lon)) return { lat, lon };
+      } catch (_) {}
+      return { lat: null, lon: null };
+    }
+
+    function formatCoords({ lat, lon }) {
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return "(coordonnées inconnues)";
+      const r = (x) => Number(x).toFixed(4);
+      return `(${r(lat)}, ${r(lon)})`;
+    }
+
+    function countryCodeToFlagEmoji(code) {
+      if (!code || typeof code !== "string" || code.length !== 2) return "🏳️";
+      const cc = code.toUpperCase();
+      const A = 0x1F1E6;
+      const base = "A".charCodeAt(0);
+      return String.fromCodePoint(
+        A + (cc.charCodeAt(0) - base),
+        A + (cc.charCodeAt(1) - base)
+      );
+    }
+
+    // ✅ Recalcule l'offset réel du header (il peut prendre 2 lignes)
+    function updateHeaderOffsetVar() {
+      const h = elHeader.getBoundingClientRect().height;
+      const extra = 14; // petite marge
+      document.documentElement.style.setProperty("--header-offset", `${Math.ceil(h + extra)}px`);
+    }
+    window.addEventListener("resize", updateHeaderOffsetVar);
+
+    // ✅ Scroll custom pour que le titre + haut du graphe soient toujours visibles
+    function scrollToSection(sectionId) {
+      const target = document.getElementById(sectionId);
+      if (!target) return;
+
+      updateHeaderOffsetVar();
+      const headerH = elHeader.getBoundingClientRect().height;
+      const extra = 14;
+
+      const top = target.getBoundingClientRect().top + window.pageYOffset - headerH - extra;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+
+    // Séparateurs de jours (orange pointillé)
+    const daySeparatorsPlugin = {
+      id: "daySeparators",
+      afterDraw(chart, args, pluginOptions) {
+        const days = chart?.options?.plugins?.daySeparators?.days;
+        if (!Array.isArray(days) || days.length < 2) return;
+
+        const xScale = chart.scales.x;
+        const yScale = chart.scales.y;
+        if (!xScale || !yScale) return;
+
+        const ctx = chart.ctx;
+        ctx.save();
+
+        ctx.strokeStyle = (pluginOptions && pluginOptions.color) || "orange";
+        ctx.lineWidth = (pluginOptions && pluginOptions.lineWidth) || 2;
+        ctx.setLineDash((pluginOptions && pluginOptions.dash) || [6, 6]);
+
+        const boundaries = [];
+        for (let i = 1; i < days.length; i++) {
+          if (days[i] !== days[i - 1]) boundaries.push(i);
+        }
+
+        for (const i of boundaries) {
+          const x = xScale.getPixelForValue(i);
+          ctx.beginPath();
+          ctx.moveTo(x, yScale.top);
+          ctx.lineTo(x, yScale.bottom);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+    };
+
+    // Labels des max quotidiens (même couleur que la courbe)
+    const dailyMaxLabelsPlugin = {
+      id: "dailyMaxLabels",
+      afterDatasetsDraw(chart) {
+        const maxPoints = chart?.options?.plugins?.dailyMaxLabels?.maxPoints;
+        const unit = chart?.options?.plugins?.dailyMaxLabels?.unit || "°C";
+        if (!Array.isArray(maxPoints) || maxPoints.length === 0) return;
+
+        const xScale = chart.scales.x;
+        const yScale = chart.scales.y;
+        if (!xScale || !yScale) return;
+
+        const meta0 = chart.getDatasetMeta(0);
+        const lineColor =
+          meta0?.dataset?.options?.borderColor ||
+          chart.data.datasets?.[0]?.borderColor ||
+          "blue";
+
+        const ctx = chart.ctx;
+        ctx.save();
+
+        ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+        ctx.fillStyle = lineColor;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "white";
+
+        for (const p of maxPoints) {
+          const x = xScale.getPixelForValue(p.x);
+          const y = yScale.getPixelForValue(p.y);
+          const text = `${p.y.toFixed(1)}${unit}`;
+          const yText = y - 8;
+          ctx.strokeText(text, x, yText);
+          ctx.fillText(text, x, yText);
+        }
+
+        ctx.restore();
+      }
+    };
+
+    Chart.register(daySeparatorsPlugin, dailyMaxLabelsPlugin);
+
+    function computeDailyMaxPoints(days, temps) {
+      const bestByDay = new Map();
+      for (let i = 0; i < days.length; i++) {
+        const day = days[i];
+        const temp = temps[i];
+        const prev = bestByDay.get(day);
+        if (!prev || temp > prev.y) bestByDay.set(day, { day, x: i, y: temp });
+      }
+
+      const ordered = [];
+      const seen = new Set();
+      for (const d of days) {
+        if (!seen.has(d) && bestByDay.has(d)) {
+          ordered.push(bestByDay.get(d));
+          seen.add(d);
+        }
+      }
+      return ordered;
+    }
+
+    async function fetchCitySeries({ name, url }) {
+      const res = await fetch(url, { headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
+
+      const json = await res.json();
+
+      const times = json?.hourly?.time;
+      const temps = json?.hourly?.temperature_2m;
+      const unit = json?.hourly_units?.temperature_2m || "°C";
+      const tz = json?.timezone || "";
+
+      if (!Array.isArray(times) || !Array.isArray(temps) || times.length !== temps.length) {
+        throw new Error(`${name}: format inattendu (hourly.time / hourly.temperature_2m)`);
+      }
+
+      const days = times.map(t => t.split("T")[0]);
+      const labels = times.map(toLabel);
+      const dailyMaxPoints = computeDailyMaxPoints(days, temps);
+
+      return { name, labels, days, temps, unit, timezone: tz, dailyMaxPoints };
+    }
+
+    function buildMenuAndSections() {
+      elMenu.innerHTML = "";
+      elCities.innerHTML = "";
+
+      const usedIds = new Set();
+
+      CITY_SOURCES.forEach((c, idx) => {
+        let id = slugify(c.name) || `ville-${idx}`;
+        while (usedIds.has(id)) id = `${id}-${idx}`;
+        usedIds.add(id);
+
+        const coordsText = formatCoords(extractCoords(c));
+        const flag = countryCodeToFlagEmoji(c.countryCode);
+
+        // Menu: drapeau + nom, + scroll custom (offset header)
+        const link = document.createElement("a");
+        link.href = `#${id}`;
+        link.textContent = `${flag} ${c.name}`;
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+          scrollToSection(id);
+          history.replaceState(null, "", `#${id}`);
+        });
+        elMenu.appendChild(link);
+
+        // Section
+        const section = document.createElement("section");
+        section.className = "city anchor";
+        section.id = id;
+
+        section.innerHTML = `
+          <h2><span class="flag">${flag}</span>${c.name} <span class="coords">${coordsText}</span></h2>
+          <div class="meta" id="${id}-meta">Chargement…</div>
+          <div class="canvasWrap">
+            <canvas id="${id}-canvas"></canvas>
+          </div>
+        `;
+
+        elCities.appendChild(section);
+      });
+    }
+
+    function renderChart(canvasId, series) {
+      const canvas = document.getElementById(canvasId);
+
+      new Chart(canvas, {
+        type: "line",
+        data: {
+          labels: series.labels,
+          datasets: [{
+            label: series.name,
+            data: series.temps,
+            tension: 0.25,
+            pointRadius: 0,
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: true, position: "top" },
+            daySeparators: { days: series.days, color: "orange", dash: [6, 6], lineWidth: 2 },
+            dailyMaxLabels: { maxPoints: series.dailyMaxPoints, unit: series.unit }
+          },
+          scales: {
+            x: { ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 18 } },
+            y: { title: { display: true, text: `Température (${series.unit})` } }
+          }
+        }
+      });
+    }
+
+    async function loadAllCities() {
+      if (!CITY_SOURCES.length) {
+        setGlobalStatus("Aucune ville configurée.", "error");
+        return;
+      }
+
+      setGlobalStatus(`Chargement de ${CITY_SOURCES.length} ville(s)…`, "");
+      let okCount = 0;
+
+      await Promise.allSettled(
+        CITY_SOURCES.map(async (c, idx) => {
+          const section = elCities.children[idx];
+          const id = section?.id || (slugify(c.name) || `ville-${idx}`);
+
+          const metaEl = document.getElementById(`${id}-meta`);
+          const canvasId = `${id}-canvas`;
+
+          try {
+            const series = await fetchCitySeries(c);
+            if (metaEl) {
+              const daysCount = new Set(series.days).size;
+              metaEl.textContent = `Timezone: ${series.timezone} • ${daysCount} jour(s)`;
+            }
+            renderChart(canvasId, series);
+            okCount += 1;
+          } catch (e) {
+            const msg = String(e?.message || e);
+            if (metaEl) metaEl.textContent = `Erreur: ${msg}`;
+            const canvas = document.getElementById(canvasId);
+            if (canvas) canvas.replaceWith(document.createTextNode("Impossible d'afficher le graphique pour cette ville."));
+          }
+        })
+      );
+
+      if (okCount === CITY_SOURCES.length) {
+        setGlobalStatus(`OK — ${okCount}/${CITY_SOURCES.length} chargées.`, "ok");
+      } else if (okCount > 0) {
+        setGlobalStatus(`Partiel — ${okCount}/${CITY_SOURCES.length} chargées.`, "error");
+      } else {
+        setGlobalStatus(`Erreur — aucune ville n'a pu être chargée.`, "error");
+      }
+    }
+
+    // Build + load
+    buildMenuAndSections();
+    updateHeaderOffsetVar();
+    loadAllCities();
+
+    // ✅ Si on arrive sur une URL déjà avec un #hash, on applique aussi le scroll offset
+    window.addEventListener("load", () => {
+      const hash = (location.hash || "").replace("#", "");
+      if (hash) scrollToSection(hash);
+    });
+  </script>
+</body>
+</html>
