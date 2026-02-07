@@ -33,11 +33,10 @@
       flex-wrap: wrap;
     }
 
-    .brand{ font-weight:700; margin-right:8px; }
+    .brand{ font-weight:700; }
 
-    /* ✅ Bouton menu (affiché en compact mode) */
+    /* ✅ Bouton toujours visible */
     .menuToggle{
-      display:none;
       border:1px solid #d1d5db;
       background:#fff;
       padding:8px 10px;
@@ -45,17 +44,25 @@
       font-size:14px;
       white-space:nowrap;
       cursor:pointer;
-      margin-left:auto;
+      margin-left:auto; /* pousse à droite */
     }
     .menuToggle:hover{ background:#f3f4f6; }
 
-    /* ✅ Menu normal (desktop) */
+    /* ✅ Menu repliable: wrap sur plusieurs lignes si nécessaire */
     .menu{
-      display:flex;
+      display:none;         /* caché par défaut */
+      width:100%;
       gap:10px;
-      flex-wrap:wrap;
-      overflow-x:auto;
+      flex-wrap:wrap;       /* ✅ plusieurs lignes */
+      overflow-x:hidden;    /* ✅ pas de scroll horizontal */
+      margin-top:10px;
+      align-items:flex-start;
     }
+
+    header.menu-open .menu{
+      display:flex;
+    }
+
     .menu a{
       text-decoration:none;
       color:#111827;
@@ -64,6 +71,7 @@
       border-radius:999px;
       font-size:14px;
       white-space:nowrap;
+      line-height:1;
     }
     .menu a:hover{ background:#f3f4f6; }
 
@@ -104,41 +112,6 @@
     canvas{ width:100%; max-height:520px; }
 
     .flag{ margin-right:6px; }
-
-    /* ✅ Compact mode: smartphone portrait + smartphone paysage (hauteur faible) */
-    @media (max-width: 640px), (max-height: 520px){
-      .topbar{
-        flex-wrap:nowrap; /* une seule ligne */
-        align-items:center;
-      }
-
-      .menuToggle{
-        display:inline-flex; /* montre le bouton */
-        align-items:center;
-        gap:6px;
-        margin-left:auto;
-      }
-
-      .menu{
-        display:none;       /* menu caché */
-        width:100%;
-        margin-top:10px;
-        flex-wrap:nowrap;   /* barre horizontale */
-        overflow-x:auto;
-      }
-
-      header.menu-open .topbar{
-        flex-wrap:wrap;     /* quand ouvert, autorise retour à la ligne */
-      }
-      header.menu-open .menu{
-        display:flex;
-      }
-
-      .menu a{
-        padding:7px 9px;
-        font-size:13px;
-      }
-    }
   </style>
 </head>
 
@@ -153,6 +126,7 @@
 
       <nav id="menu" class="menu"></nav>
     </div>
+
     <div id="globalStatus" class="status"></div>
   </header>
 
@@ -235,10 +209,6 @@
       elGlobalStatus.className = "status " + (type || "");
     }
 
-    function isCompactMode(){
-      return window.matchMedia("(max-width: 640px), (max-height: 520px)").matches;
-    }
-
     function slugify(str) {
       return String(str)
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -279,7 +249,7 @@
       );
     }
 
-    // ✅ Menu compact (toggle)
+    // ✅ Menu repliable (toujours)
     function setMenuOpen(open){
       elHeader.classList.toggle("menu-open", open);
       elToggle.setAttribute("aria-expanded", open ? "true" : "false");
@@ -292,28 +262,15 @@
       setMenuOpen(!isOpen);
     });
 
-    function closeMenuOnCompact(){
-      if (isCompactMode()) setMenuOpen(false);
-    }
-
-    // ✅ Recalcule l'offset réel du header (menu ouvert/fermé, portrait/paysage)
+    // ✅ Recalcule l'offset réel du header (menu ouvert/fermé)
     function updateHeaderOffsetVar() {
       const h = elHeader.getBoundingClientRect().height;
       const extra = 14;
       document.documentElement.style.setProperty("--header-offset", `${Math.ceil(h + extra)}px`);
     }
+    window.addEventListener("resize", updateHeaderOffsetVar);
 
-    window.addEventListener("resize", () => {
-      // Sur changement portrait/paysage, on garde le menu fermé en compact mode
-      if (isCompactMode()) {
-        elHeader.classList.remove("menu-open");
-        elToggle.setAttribute("aria-expanded", "false");
-        elToggle.textContent = "Villes ▾";
-      }
-      updateHeaderOffsetVar();
-    });
-
-    // ✅ Scroll custom pour compenser le header sticky
+    // ✅ Scroll custom (compense header sticky)
     function scrollToSection(sectionId) {
       const target = document.getElementById(sectionId);
       if (!target) return;
@@ -361,7 +318,7 @@
       }
     };
 
-    // ✅ Labels des max quotidiens (même couleur que la courbe)
+    // ✅ Labels max quotidiens (même couleur que la courbe)
     const dailyMaxLabelsPlugin = {
       id: "dailyMaxLabels",
       afterDatasetsDraw(chart) {
@@ -468,7 +425,7 @@
           e.preventDefault();
           scrollToSection(id);
           history.replaceState(null, "", `#${id}`);
-          closeMenuOnCompact();
+          setMenuOpen(false); // referme après sélection
         });
         elMenu.appendChild(link);
 
@@ -564,19 +521,16 @@
 
     // Init
     buildMenuAndSections();
-
-    // Par défaut: menu fermé en compact mode. Sur desktop, le bouton est caché et le menu reste visible.
-    setMenuOpen(false);
-
+    setMenuOpen(false);     // menu fermé par défaut
     updateHeaderOffsetVar();
     loadAllCities();
 
-    // Si on arrive sur une URL avec un hash, scroll proprement (offset)
+    // Hash initial
     window.addEventListener("load", () => {
       const hash = (location.hash || "").replace("#", "");
       if (hash) {
         scrollToSection(hash);
-        closeMenuOnCompact();
+        setMenuOpen(false);
       }
     });
   </script>
