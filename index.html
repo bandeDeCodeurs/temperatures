@@ -35,7 +35,7 @@
 
     .brand{ font-weight:700; margin-right:8px; }
 
-    /* ✅ Bouton menu mobile */
+    /* ✅ Bouton menu (affiché en compact mode) */
     .menuToggle{
       display:none;
       border:1px solid #d1d5db;
@@ -49,7 +49,7 @@
     }
     .menuToggle:hover{ background:#f3f4f6; }
 
-    /* ✅ Menu */
+    /* ✅ Menu normal (desktop) */
     .menu{
       display:flex;
       gap:10px;
@@ -105,8 +105,8 @@
 
     .flag{ margin-right:6px; }
 
-    /* ✅ Mobile: header compact + menu repliable */
-    @media (max-width: 640px){
+    /* ✅ Compact mode: smartphone portrait + smartphone paysage (hauteur faible) */
+    @media (max-width: 640px), (max-height: 520px){
       .topbar{
         flex-wrap:nowrap; /* une seule ligne */
         align-items:center;
@@ -116,6 +116,7 @@
         display:inline-flex; /* montre le bouton */
         align-items:center;
         gap:6px;
+        margin-left:auto;
       }
 
       .menu{
@@ -234,6 +235,10 @@
       elGlobalStatus.className = "status " + (type || "");
     }
 
+    function isCompactMode(){
+      return window.matchMedia("(max-width: 640px), (max-height: 520px)").matches;
+    }
+
     function slugify(str) {
       return String(str)
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -244,7 +249,7 @@
 
     function toLabel(isoString) {
       const [d, t] = isoString.split("T");
-      return `${d.slice(5)} ${t}`; // "MM-DD HH:MM"
+      return `${d.slice(5)} ${t}`;
     }
 
     function extractCoords(city) {
@@ -274,12 +279,12 @@
       );
     }
 
-    // ✅ Menu mobile (toggle)
+    // ✅ Menu compact (toggle)
     function setMenuOpen(open){
       elHeader.classList.toggle("menu-open", open);
       elToggle.setAttribute("aria-expanded", open ? "true" : "false");
       elToggle.textContent = open ? "Villes ▴" : "Villes ▾";
-      updateHeaderOffsetVar(); // le header change de hauteur quand on ouvre
+      updateHeaderOffsetVar();
     }
 
     elToggle.addEventListener("click", () => {
@@ -287,26 +292,20 @@
       setMenuOpen(!isOpen);
     });
 
-    function closeMenuOnMobile(){
-      if (window.matchMedia("(max-width: 640px)").matches) setMenuOpen(false);
+    function closeMenuOnCompact(){
+      if (isCompactMode()) setMenuOpen(false);
     }
 
-    // ✅ Recalcule l'offset réel du header (il peut changer selon mobile/desktop + menu ouvert)
+    // ✅ Recalcule l'offset réel du header (menu ouvert/fermé, portrait/paysage)
     function updateHeaderOffsetVar() {
       const h = elHeader.getBoundingClientRect().height;
       const extra = 14;
       document.documentElement.style.setProperty("--header-offset", `${Math.ceil(h + extra)}px`);
     }
+
     window.addEventListener("resize", () => {
-      // Sur resize, si on passe desktop<->mobile, mieux de fermer
-      if (!window.matchMedia("(max-width: 640px)").matches) {
-        setMenuOpen(true); // desktop: menu visible (class menu-open n'a pas d'effet, mais on force bouton cohérent)
-        // On remet le bouton dans l'état "fermé" visuellement (car desktop n'en a pas besoin)
-        elHeader.classList.remove("menu-open");
-        elToggle.setAttribute("aria-expanded", "false");
-        elToggle.textContent = "Villes ▾";
-      } else {
-        // mobile: par défaut fermé
+      // Sur changement portrait/paysage, on garde le menu fermé en compact mode
+      if (isCompactMode()) {
         elHeader.classList.remove("menu-open");
         elToggle.setAttribute("aria-expanded", "false");
         elToggle.textContent = "Villes ▾";
@@ -327,9 +326,7 @@
       window.scrollTo({ top, behavior: "smooth" });
     }
 
-    /**
-     * ✅ Séparateurs de jours (lignes verticales orange pointillées)
-     */
+    // ✅ Séparateurs de jours (orange pointillé)
     const daySeparatorsPlugin = {
       id: "daySeparators",
       afterDraw(chart, args, pluginOptions) {
@@ -364,9 +361,7 @@
       }
     };
 
-    /**
-     * ✅ Labels des max quotidiens (couleur = série principale)
-     */
+    // ✅ Labels des max quotidiens (même couleur que la courbe)
     const dailyMaxLabelsPlugin = {
       id: "dailyMaxLabels",
       afterDatasetsDraw(chart) {
@@ -392,7 +387,6 @@
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
 
-        // contour blanc pour lisibilité
         ctx.lineWidth = 4;
         ctx.strokeStyle = "white";
 
@@ -467,7 +461,6 @@
         const coordsText = formatCoords(extractCoords(c));
         const flag = countryCodeToFlagEmoji(c.countryCode);
 
-        // Menu: drapeau + nom, scroll custom + fermeture mobile
         const link = document.createElement("a");
         link.href = `#${id}`;
         link.textContent = `${flag} ${c.name}`;
@@ -475,11 +468,10 @@
           e.preventDefault();
           scrollToSection(id);
           history.replaceState(null, "", `#${id}`);
-          closeMenuOnMobile();
+          closeMenuOnCompact();
         });
         elMenu.appendChild(link);
 
-        // Section
         const section = document.createElement("section");
         section.className = "city anchor";
         section.id = id;
@@ -573,18 +565,18 @@
     // Init
     buildMenuAndSections();
 
-    // Mobile: menu fermé par défaut. Desktop: le menu est visible (le bouton est caché)
+    // Par défaut: menu fermé en compact mode. Sur desktop, le bouton est caché et le menu reste visible.
     setMenuOpen(false);
 
     updateHeaderOffsetVar();
     loadAllCities();
 
-    // ✅ Si on arrive sur une URL avec un hash, on scroll proprement (offset)
+    // Si on arrive sur une URL avec un hash, scroll proprement (offset)
     window.addEventListener("load", () => {
       const hash = (location.hash || "").replace("#", "");
       if (hash) {
         scrollToSection(hash);
-        closeMenuOnMobile();
+        closeMenuOnCompact();
       }
     });
   </script>
