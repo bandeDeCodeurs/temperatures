@@ -13,6 +13,9 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
       scroll-behavior: smooth;
       --header-offset: 110px; /* fallback, recalculé en JS */
+
+      /* ✅ Bleu unique: utilisé par le graphique + le lien "Resolution" */
+      --series-blue: #36a2eb; /* même bleu que le rendu "Chart.js blue" classique */
     }
     body{ margin:0; background:#fff; color:#111827; }
 
@@ -35,7 +38,6 @@
 
     .brand{ font-weight:700; }
 
-    /* ✅ Bouton toujours visible */
     .menuToggle{
       border:1px solid #d1d5db;
       background:#fff;
@@ -48,9 +50,8 @@
     }
     .menuToggle:hover{ background:#f3f4f6; }
 
-    /* ✅ Menu repliable: wrap sur plusieurs lignes si nécessaire */
     .menu{
-      display:none;         /* caché par défaut */
+      display:none;
       width:100%;
       gap:10px;
       flex-wrap:wrap;
@@ -58,10 +59,7 @@
       margin-top:10px;
       align-items:flex-start;
     }
-
-    header.menu-open .menu{
-      display:flex;
-    }
+    header.menu-open .menu{ display:flex; }
 
     .menu a{
       text-decoration:none;
@@ -99,12 +97,27 @@
       box-shadow:0 1px 10px rgba(0,0,0,.05);
     }
 
-    .anchor{
-      scroll-margin-top: var(--header-offset);
-    }
+    .anchor{ scroll-margin-top: var(--header-offset); }
 
     .city h2{ margin:0 0 6px; font-size:20px; }
     .coords{ color:#6b7280; font-weight:500; font-size:14px; }
+
+    /* ✅ " - Resolution" */
+    .resolution{
+      margin-left:10px;
+      font-size:14px;
+      font-weight:600;
+      color:#6b7280;
+    }
+    .resolution a{
+      color: var(--series-blue);       /* ✅ même bleu que la courbe */
+      text-decoration: underline;      /* ✅ toujours souligné */
+      text-underline-offset: 2px;
+    }
+    .resolution a:hover{
+      text-decoration: underline; /* on garde */
+    }
+
     .meta{ color:#6b7280; font-size:13px; margin-bottom:10px; }
 
     .canvasWrap{ margin-top:12px; }
@@ -138,61 +151,73 @@
       {
         name: "Londres",
         countryCode: "GB",
+        resolutionUrl: "https://www.wunderground.com/history/daily/gb/london/EGLC",
         url: "https://api.open-meteo.com/v1/forecast?latitude=51.51&longitude=0.03&hourly=temperature_2m&current=temperature_2m&timezone=Europe%2FLondon&forecast_days=3"
       },
       {
         name: "NYC",
         countryCode: "US",
+        resolutionUrl: "https://www.wunderground.com/history/daily/us/ny/new-york-city/KLGA",
         url: "https://api.open-meteo.com/v1/forecast?latitude=40.76&longitude=-73.86&hourly=temperature_2m&current=temperature_2m&timezone=America%2FNew_York&forecast_days=3&temperature_unit=fahrenheit"
       },
       {
         name: "Buenos Aires",
         countryCode: "AR",
+        resolutionUrl: "https://www.wunderground.com/history/daily/ar/ezeiza/SAEZ",
         url: "https://api.open-meteo.com/v1/forecast?latitude=-34.79&longitude=-58.52&hourly=temperature_2m&current=temperature_2m&timezone=America%2FArgentina%2FBuenos_Aires&forecast_days=3"
       },
       {
         name: "Chicago",
         countryCode: "US",
+        resolutionUrl: "https://www.wunderground.com/history/daily/us/il/chicago/KORD",
         url: "https://api.open-meteo.com/v1/forecast?latitude=41.98&longitude=-87.91&hourly=temperature_2m&current=temperature_2m&timezone=America%2FChicago&forecast_days=3&temperature_unit=fahrenheit"
       },
       {
         name: "Dallas",
         countryCode: "US",
+        resolutionUrl: "https://www.wunderground.com/history/daily/us/tx/dallas/KDAL",
         url: "https://api.open-meteo.com/v1/forecast?latitude=32.85&longitude=-96.87&hourly=temperature_2m&current=temperature_2m&timezone=America%2FChicago&forecast_days=3&temperature_unit=fahrenheit"
       },
       {
         name: "Seoul",
         countryCode: "KR",
+        resolutionUrl: "https://www.wunderground.com/history/daily/kr/incheon/RKSI",
         url: "https://api.open-meteo.com/v1/forecast?latitude=37.49&longitude=126.49&hourly=temperature_2m&current=temperature_2m&timezone=Asia%2FSeoul&forecast_days=3"
       },
       {
         name: "Toronto",
         countryCode: "CA",
+        resolutionUrl: "https://www.wunderground.com/history/daily/ca/mississauga/CYYZ",
         url: "https://api.open-meteo.com/v1/forecast?latitude=43.71&longitude=-79.66&hourly=temperature_2m&current=temperature_2m&timezone=America%2FToronto&forecast_days=3"
       },
       {
         name: "Miami",
         countryCode: "US",
+        resolutionUrl: "https://www.wunderground.com/history/daily/us/fl/miami/KMIA",
         url: "https://api.open-meteo.com/v1/forecast?latitude=25.85&longitude=-80.24&hourly=temperature_2m&current=temperature_2m&timezone=America%2FNew_York&forecast_days=3&temperature_unit=fahrenheit"
       },
       {
         name: "Atlanta",
         countryCode: "US",
+        resolutionUrl: "https://www.wunderground.com/history/daily/us/ga/atlanta/KATL",
         url: "https://api.open-meteo.com/v1/forecast?latitude=33.64&longitude=-84.41&hourly=temperature_2m&current=temperature_2m&timezone=America%2FNew_York&forecast_days=3&temperature_unit=fahrenheit"
       },
       {
         name: "Wellington",
         countryCode: "NZ",
+        resolutionUrl: "https://www.wunderground.com/history/daily/nz/wellington/NZWN",
         url: "https://api.open-meteo.com/v1/forecast?latitude=-41.32&longitude=174.8&hourly=temperature_2m&current=temperature_2m&timezone=Pacific%2FAuckland&forecast_days=3"
       },
       {
         name: "Seattle",
         countryCode: "US",
+        resolutionUrl: "https://www.wunderground.com/history/daily/us/wa/seatac/KSEA",
         url: "https://api.open-meteo.com/v1/forecast?latitude=47.44&longitude=-122.3&hourly=temperature_2m&current=temperature_2m&timezone=America%2FLos_Angeles&forecast_days=3&temperature_unit=fahrenheit"
       },
       {
         name: "Ankara",
         countryCode: "TR",
+        resolutionUrl: "https://www.wunderground.com/history/daily/tr/%C3%A7ubuk/LTAC",
         url: "https://api.open-meteo.com/v1/forecast?latitude=40.24&longitude=33.03&hourly=temperature_2m&current=temperature_2m&timezone=Europe%2FIstanbul&forecast_days=3"
       }
     ];
@@ -248,20 +273,26 @@
       );
     }
 
-    // ✅ Menu repliable
+    function escapeHtml(str){
+      return String(str)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
     function setMenuOpen(open){
       elHeader.classList.toggle("menu-open", open);
       elToggle.setAttribute("aria-expanded", open ? "true" : "false");
       elToggle.textContent = open ? "Villes ▴" : "Villes ▾";
       updateHeaderOffsetVar();
     }
-
     elToggle.addEventListener("click", () => {
       const isOpen = elHeader.classList.contains("menu-open");
       setMenuOpen(!isOpen);
     });
 
-    // ✅ Recalcule l'offset réel du header (menu ouvert/fermé)
     function updateHeaderOffsetVar() {
       const h = elHeader.getBoundingClientRect().height;
       const extra = 14;
@@ -269,7 +300,6 @@
     }
     window.addEventListener("resize", updateHeaderOffsetVar);
 
-    // ✅ Scroll custom (compense header sticky)
     function scrollToSection(sectionId) {
       const target = document.getElementById(sectionId);
       if (!target) return;
@@ -282,7 +312,6 @@
       window.scrollTo({ top, behavior: "smooth" });
     }
 
-    // ✅ Séparateurs de jours (orange pointillé)
     const daySeparatorsPlugin = {
       id: "daySeparators",
       afterDraw(chart, args, pluginOptions) {
@@ -317,7 +346,6 @@
       }
     };
 
-    // ✅ Labels max quotidiens (même couleur que la courbe)
     const dailyMaxLabelsPlugin = {
       id: "dailyMaxLabels",
       afterDatasetsDraw(chart) {
@@ -333,7 +361,8 @@
         const lineColor =
           meta0?.dataset?.options?.borderColor ||
           chart.data.datasets?.[0]?.borderColor ||
-          "blue";
+          getComputedStyle(document.documentElement).getPropertyValue("--series-blue").trim() ||
+          "#36a2eb";
 
         const ctx = chart.ctx;
         ctx.save();
@@ -359,7 +388,6 @@
       }
     };
 
-    // ✅ Marqueur "now" : point vert + label "now" (sans barre)
     const nowMarkerPlugin = {
       id: "nowMarker",
       afterDatasetsDraw(chart) {
@@ -377,26 +405,22 @@
         const ctx = chart.ctx;
         ctx.save();
 
-        // point vert
         ctx.fillStyle = "green";
         ctx.beginPath();
         ctx.arc(x, y, 5, 0, Math.PI * 2);
         ctx.fill();
 
-        // contour blanc
         ctx.strokeStyle = "white";
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(x, y, 5, 0, Math.PI * 2);
         ctx.stroke();
 
-        // label "now"
+        const label = "now";
         ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
 
-        // halo blanc pour lisibilité
-        const label = "now";
         ctx.lineWidth = 4;
         ctx.strokeStyle = "white";
         ctx.strokeText(label, x + 10, y);
@@ -470,11 +494,10 @@
       const labels = times.map(toLabel);
       const dailyMaxPoints = computeDailyMaxPoints(days, temps);
 
-      // ✅ "now": basé sur json.current.time si dispo
       const currentTime = json?.current?.time || null;
       const nowIndex = currentTime ? findNearestIndex(times, currentTime) : null;
 
-      return { name, labels, days, temps, unit, timezone: tz, dailyMaxPoints, nowIndex };
+      return { labels, days, temps, unit, timezone: tz, dailyMaxPoints, nowIndex };
     }
 
     function buildMenuAndSections() {
@@ -502,12 +525,24 @@
         });
         elMenu.appendChild(link);
 
+        const resolutionUrl = c.resolutionUrl || "";
+        const safeResolutionUrl = escapeHtml(resolutionUrl);
+
         const section = document.createElement("section");
         section.className = "city anchor";
         section.id = id;
 
         section.innerHTML = `
-          <h2><span class="flag">${flag}</span>${c.name} <span class="coords">${coordsText}</span></h2>
+          <h2>
+            <span class="flag">${flag}</span>${escapeHtml(c.name)}
+            <span class="coords">${escapeHtml(coordsText)}</span>
+            ${
+              resolutionUrl
+  ? `<span class="resolution"><a href="${safeResolutionUrl}" target="_blank" rel="noopener noreferrer">Resolution</a></span>`
+  : ""
+
+            }
+          </h2>
           <div class="meta" id="${id}-meta">Chargement…</div>
           <div class="canvasWrap">
             <canvas id="${id}-canvas"></canvas>
@@ -520,24 +555,26 @@
 
     function renderChart(canvasId, series) {
       const canvas = document.getElementById(canvasId);
+      const seriesBlue = getComputedStyle(document.documentElement).getPropertyValue("--series-blue").trim() || "#36a2eb";
 
       new Chart(canvas, {
         type: "line",
         data: {
           labels: series.labels,
           datasets: [{
-            label: series.name,
+            label: "",                 // pas affiché car legend disabled
             data: series.temps,
             tension: 0.25,
             pointRadius: 0,
-            borderWidth: 2
+            borderWidth: 2,
+            borderColor: seriesBlue    // ✅ bleu du graph = bleu du lien
           }]
         },
         options: {
           responsive: true,
           interaction: { mode: "index", intersect: false },
           plugins: {
-            legend: { display: true, position: "top" },
+            legend: { display: false }, // ✅ pas de “Londres / Toronto …”
             daySeparators: { days: series.days, color: "orange", dash: [6, 6], lineWidth: 2 },
             dailyMaxLabels: { maxPoints: series.dailyMaxPoints, unit: series.unit },
             nowMarker: { index: series.nowIndex }
@@ -593,13 +630,11 @@
       }
     }
 
-    // Init
     buildMenuAndSections();
     setMenuOpen(false);
     updateHeaderOffsetVar();
     loadAllCities();
 
-    // Hash initial
     window.addEventListener("load", () => {
       const hash = (location.hash || "").replace("#", "");
       if (hash) {
